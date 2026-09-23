@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的日程</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --c-primary: #4C7DF0;
+  --c-primary-weak: #EEF2FF;
+  --c-bg: #F5F6F8;
+  --c-card: #FFFFFF;
+  --c-line: #E5E7EB;
+  --c-text: #1F2937;
+  --c-text-2: #6B7280;
+  --c-text-3: #9CA3AF;
+  --c-danger: #EF4444;
+  --c-danger-weak: #FEF2F2;
+  --c-success: #10B981;
+  --c-warning: #F59E0B;
+  --c-warning-weak: #FFFBEB;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-modal: 0 20px 40px rgba(0,0,0,0.15);
+  --row-h: 46px;
+  --grid-min-w: 760px;
+  --topbar-h: 52px;
+  --tabbar-h: 56px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--c-text);
+  background: var(--c-bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font: inherit; color: inherit; }
+a { color: var(--c-primary); text-decoration: none; }
+ul, ol { list-style: none; }
+
+/* ============================================================
+   LAYOUT SHELL
+   ============================================================ */
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-bottom: var(--tabbar-h);
+}
+
+#topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  height: var(--topbar-h);
+  padding: 0 16px;
+  background: var(--c-card);
+  border-bottom: 1px solid var(--c-line);
+  gap: 12px;
+}
+#topbar .brand { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
+#topbar .spacer { flex: 1; }
+#topbar .week-badge {
+  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: var(--c-primary-weak);
+  color: var(--c-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+#topbar .week-badge.is-holiday { background: var(--c-warning-weak); color: var(--c-warning); }
+
+#tabs {
+  display: flex;
+  gap: 0;
+  background: var(--c-card);
+  border-bottom: 1px solid var(--c-line);
+  padding: 0 16px;
+}
+#tabs .tab {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--c-text-2);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+#tabs .tab:hover { color: var(--c-text); }
+#tabs .tab.active { color: var(--c-primary); border-bottom-color: var(--c-primary); }
+
+#tabbar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--c-card);
+  border-top: 1px solid var(--c-line);
+  padding-bottom: var(--safe-b);
+}
+#tabbar .tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  font-size: 0.7rem;
+  color: var(--c-text-3);
+  gap: 2px;
+}
+#tabbar .tab.active { color: var(--c-primary); }
+#tabbar .tab .tab-icon { font-size: 1.2rem; }
+
+#view {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   BUTTONS & CHIPS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s;
+  min-height: 36px;
+  min-width: 44px;
+}
+.btn-primary { background: var(--c-primary); color: #fff; }
+.btn-primary:hover { background: #3B6DE0; }
+.btn-ghost { background: transparent; color: var(--c-text-2); border: 1px solid var(--c-line); }
+.btn-ghost:hover { background: var(--c-bg); }
+.btn-danger { background: var(--c-danger); color: #fff; }
+.btn-danger:hover { background: #DC2626; }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; min-height: 30px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: 1.5px solid var(--c-line);
+  background: var(--c-card);
+  color: var(--c-text-2);
+  transition: all 0.15s;
+  cursor: pointer;
+  min-height: 30px;
+}
+.chip:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.chip.active { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card {
+  background: var(--c-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+.card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title .count { font-size: 0.78rem; color: var(--c-text-3); font-weight: 400; }
+
+/* ============================================================
+   HOME VIEW
+   ============================================================ */
+.hm-banner {
+  background: linear-gradient(135deg, var(--c-primary), #6C9CF5);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.hm-banner .hm-date { font-size: 1.1rem; font-weight: 600; }
+.hm-banner .hm-week { font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+.hm-banner .hm-progress { margin-top: 12px; }
+.hm-banner .hm-progress-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hm-banner .hm-progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.hm-banner .hm-progress-text { font-size: 0.75rem; opacity: 0.8; margin-top: 4px; }
+
+.hm-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+
+.course-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+.course-row:hover { background: var(--c-bg); }
+.course-row.is-past { opacity: 0.5; }
+.course-row.is-ongoing { border-left-color: var(--c-success); background: #F0FDF4; }
+.course-row .cr-time { font-size: 0.82rem; color: var(--c-text-2); min-width: 110px; }
+.course-row .cr-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+.course-row .cr-meta { font-size: 0.78rem; color: var(--c-text-3); }
+.course-row .cr-status { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+.course-row .cr-status.ongoing { background: var(--c-success); color: #fff; }
+
+.next-card { margin-bottom: 16px; }
+.next-card .nc-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+.next-card .nc-time { font-size: 0.82rem; color: var(--c-text-2); }
+.next-card .nc-countdown { font-size: 1.2rem; font-weight: 700; color: var(--c-primary); margin-top: 8px; }
+.next-card .nc-link { font-size: 0.78rem; color: var(--c-primary); cursor: pointer; margin-top: 8px; }
+
+.todo-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-line);
+  gap: 10px;
+}
+.todo-row:last-child { border-bottom: none; }
+.todo-row .todo-check {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--c-line);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.todo-row .todo-check:hover { border-color: var(--c-primary); }
+.todo-row .todo-check.done { background: var(--c-primary); border-color: var(--c-primary); color: #fff; font-size: 0.7rem; }
+.todo-row .todo-title { flex: 1; font-size: 0.88rem; }
+.todo-row .todo-title.done { text-decoration: line-through; color: var(--c-text-3); }
+.todo-row .todo-time { font-size: 0.78rem; color: var(--c-text-3); }
+.todo-row .todo-cat { font-size: 0.7rem; padding: 1px 8px; border-radius: 10px; }
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--c-text-3);
+  font-size: 0.88rem;
+}
+
+/* ============================================================
+   TIMETABLE VIEW
+   ============================================================ */
+.tt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tt-toolbar .tt-week-title { font-size: 0.95rem; font-weight: 600; margin: 0 8px; }
+
+.tt-fixed-strip {
+  background: var(--c-card);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  color: var(--c-text-2);
+  box-shadow: var(--shadow-card);
+}
+
+.tt-grid-wrap {
+  overflow-x: auto;
+  background: var(--c-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.tt-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(7, minmax(80px, 1fr));
+  min-width: var(--grid-min-w);
+  position: relative;
+}
+.tt-axis-cell {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: var(--c-text-3);
+  border-bottom: 1px solid var(--c-line);
+  border-right: 1px solid var(--c-line);
+  position: sticky;
+  left: 0;
+  background: var(--c-card);
+  z-index: 2;
+}
+.tt-day-head {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--c-text-2);
+  border-bottom: 1px solid var(--c-line);
+  border-right: 1px solid var(--c-line);
+}
+.tt-day-head.is-today { color: var(--c-primary); background: var(--c-primary-weak); }
+.tt-day-head:last-child { border-right: none; }
+
+.tt-cell {
+  height: var(--row-h);
+  border-bottom: 1px solid var(--c-line);
+  border-right: 1px solid var(--c-line);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tt-cell:last-child { border-right: none; }
+.tt-cell:hover { background: var(--c-primary-weak); }
+.tt-cell .cell-plus {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 0.7rem;
+  align-items: center;
+  justify-content: center;
+}
+.tt-cell:hover .cell-plus { display: flex; }
+
+.tt-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-size: 0.7rem;
+  color: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 1;
+  transition: box-shadow 0.15s;
+  line-height: 1.3;
+}
+.tt-block:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 3; }
+.tt-block .blk-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-block .blk-loc { font-size: 0.65rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tt-nowline {
+  position: absolute;
+  left: 56px;
+  right: 0;
+  height: 2px;
+  background: var(--c-danger);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Mobile timetable */
+.tt-mobile { display: none; }
+.tt-daybar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+.tt-daybar .day-chip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--c-text-2);
+  cursor: pointer;
+  border: 1.5px solid var(--c-line);
+  position: relative;
+  min-width: 44px;
+}
+.tt-daybar .day-chip.active { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+.tt-daybar .day-chip .has-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--c-primary);
+}
+.tt-daybar .day-chip.active .has-dot { background: #fff; }
+
+.tt-daylist .tl-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-line);
+  gap: 10px;
+}
+.tl-row .tl-time { font-size: 0.78rem; color: var(--c-text-3); min-width: 90px; padding-top: 2px; }
+.tl-row .tl-body { flex: 1; }
+.tl-row .tl-name { font-weight: 600; font-size: 0.88rem; }
+.tl-row .tl-meta { font-size: 0.78rem; color: var(--c-text-2); }
+.tl-row .tl-bar { width: 3px; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
+
+.tl-freerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  color: var(--c-text-3);
+  font-size: 0.78rem;
+}
+.tl-freerow .free-plus {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c-primary-weak);
+  color: var(--c-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* ============================================================
+   AGENDA VIEW
+   ============================================================ */
+.ag-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ag-filters { display: flex; gap: 6px; overflow-x: auto; }
+
+.ag-group-head {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--c-text-2);
+  padding: 12px 0 8px;
+  position: sticky;
+  top: 0;
+  background: var(--c-bg);
+  z-index: 1;
+}
+.ag-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--c-card);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  box-shadow: var(--shadow-card);
+  gap: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.ag-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.ag-item .ag-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--c-line);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ag-item .ag-check:hover { border-color: var(--c-primary); }
+.ag-item .ag-check.done { background: var(--c-primary); border-color: var(--c-primary); color: #fff; font-size: 0.7rem; }
+.ag-item .ag-body { flex: 1; min-width: 0; }
+.ag-item .ag-title { font-weight: 600; font-size: 0.9rem; }
+.ag-item .ag-title.done { text-decoration: line-through; color: var(--c-text-3); }
+.ag-item .ag-meta { font-size: 0.78rem; color: var(--c-text-3); margin-top: 2px; }
+.ag-item .ag-meta.overdue { color: var(--c-danger); }
+.ag-item .ag-cat { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+
+#fab {
+  display: none;
+  position: fixed;
+  bottom: calc(var(--tabbar-h) + var(--safe-b) + 16px);
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(76,125,240,0.4);
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  cursor: pointer;
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+#modalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+}
+#modalRoot.open { display: flex; }
+#modalRoot .modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+}
+#modalRoot .modal-card {
+  position: relative;
+  background: var(--c-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-modal);
+  width: min(420px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  margin: auto;
+  z-index: 1;
+}
+#modalRoot .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0;
+}
+#modalRoot .modal-header h3 { font-size: 1rem; font-weight: 700; }
+#modalRoot .modal-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  color: var(--c-text-3);
+  cursor: pointer;
+}
+#modalRoot .modal-close:hover { background: var(--c-bg); }
+#modalRoot .modal-body { padding: 16px 20px; }
+#modalRoot .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+}
+#modalRoot .modal-footer.danger { justify-content: space-between; }
+
+/* Mobile modal: bottom sheet */
+@media (max-width: 719px) {
+  #modalRoot .modal-card {
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    margin: auto 0 0 0;
+  }
+  #modalRoot .modal-drag {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--c-line);
+    margin: 10px auto 0;
+  }
+}
+
+/* ============================================================
+   FORM
+   ============================================================ */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--c-text-2); margin-bottom: 4px; }
+.form-label .req { color: var(--c-danger); }
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  transition: border-color 0.15s;
+  background: var(--c-card);
+}
+.form-input:focus { outline: none; border-color: var(--c-primary); }
+.form-input.error { border-color: var(--c-danger); }
+.form-error { font-size: 0.75rem; color: var(--c-danger); margin-top: 2px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-textarea { resize: vertical; min-height: 60px; }
+
+.form-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+.form-cats .chip { font-size: 0.78rem; }
+
+.slot-row {
+  display: grid;
+  grid-template-columns: 60px 60px 70px 60px 60px 1fr 32px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+}
+.slot-row input, .slot-row select {
+  padding: 4px 6px;
+  border: 1px solid var(--c-line);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+.slot-row .slot-del {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c-danger);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.slot-row .slot-del:hover { background: var(--c-danger-weak); }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+#toastRoot {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  pointer-events: auto;
+  animation: toastIn 0.2s ease;
+  max-width: 320px;
+}
+.toast.ok { background: var(--c-text); color: #fff; }
+.toast.err { background: var(--c-danger); color: #fff; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 719px) {
+  :root { --row-h: 40px; }
+  #tabs { display: none; }
+  #tabbar { display: flex; }
+  #app { padding-bottom: calc(var(--tabbar-h) + var(--safe-b)); }
+  #topbar .week-badge { display: none; }
+  .hm-cols { grid-template-columns: 1fr; }
+  .hm-banner { padding: 16px; }
+  .hm-banner .hm-date { font-size: 1rem; }
+  .tt-grid-wrap { display: none; }
+  .tt-mobile { display: block; }
+  #fab { display: flex; }
+  .ag-toolbar .btn-new-desktop { display: none; }
+  .form-row { grid-template-columns: 1fr; }
+  .slot-row { grid-template-columns: 1fr 1fr; }
+  #toastRoot { bottom: calc(var(--tabbar-h) + var(--safe-b) + 16px); right: 16px; left: 16px; }
+  .toast { max-width: none; }
+}
+
+@media (min-width: 720px) {
+  .tt-mobile { display: none !important; }
+  #fab { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  .hm-cols { grid-template-columns: 2fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- TOPBAR -->
+  <header id="topbar">
+    <span class="brand">我的日程</span>
+    <span class="spacer"></span>
+    <span class="week-badge" id="weekBadge">第1周</span>
+    <button class="btn btn-ghost btn-sm" id="btnBackup">备份</button>
+  </header>
+
+  <!-- DESKTOP TABS -->
+  <nav id="tabs">
+    <button class="tab active" data-view="home">首页</button>
+    <button class="tab" data-view="table">课表</button>
+    <button class="tab" data-view="agenda">日程</button>
+  </nav>
+
+  <!-- MAIN VIEW -->
+  <main id="view">
+    <section id="view-home"></section>
+    <section id="view-table" style="display:none"></section>
+    <section id="view-agenda" style="display:none"></section>
+  </main>
+
+  <!-- MOBILE TABBAR -->
+  <nav id="tabbar">
+    <button class="tab active" data-view="home"><span class="tab-icon"></span>首页</button>
+    <button class="tab" data-view="table"><span class="tab-icon">📅</span>课表</button>
+    <button class="tab" data-view="agenda"><span class="tab-icon"></span>日程</button>
+  </nav>
+
+  <!-- FAB (mobile) -->
+  <button id="fab">+</button>
+</div>
+
+<!-- MODAL ROOT -->
+<div id="modalRoot">
+  <div class="modal-overlay"></div>
+  <div class="modal-card" id="modalCard"></div>
+</div>
+
+<!-- TOAST ROOT -->
+<div id="toastRoot"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+var CONST = {};
+CONST.SEMESTER_START = '2026-09-07';
+CONST.TOTAL_WEEKS = 19;
+CONST.STORAGE_KEY = 'schedule-app-v1';
+CONST.SCHEMA_VERSION = 1;
+
+CONST.PERIODS = {
+  1:['08:00','08:45'], 2:['08:50','09:35'], 3:['09:50','10:35'], 4:['10:40','11:25'],
+  5:['11:30','12:15'], 6:['14:00','14:45'], 7:['14:50','15:35'], 8:['15:50','16:35'],
+  9:['16:40','17:25'], 10:['17:30','18:15'], 11:['19:00','19:45'], 12:['19:50','20:35'],
+  13:['20:40','21:25'], 14:['21:30','22:15']
+};
+
+CONST.WEEKDAY_LABELS = ['周一','周二','周三','周四','周五','周六','周日'];
+
+CONST.CATEGORIES = {
+  course:   { label:'课程',   color:'#4C7DF0', bg:'#EEF2FF' },
+  homework: { label:'作业',   color:'#12A594', bg:'#F0FDFA' },
+  meeting:  { label:'会议',   color:'#E8833A', bg:'#FFF7ED' },
+  personal: { label:'个人',   color:'#8B5CF6', bg:'#F5F3FF' }
+};
+
+CONST.COURSE_COLORS = ['#4C7DF0','#12A594','#E8833A','#8B5CF6','#EC4899','#06B6D4'];
+
+CONST.SEED_COURSES = [
+  { id:'c1', name:'可靠性中的机器学习(博)', teacher:'刘杰', campus:'学院路校区',
+    mode:'面授讲课', color:CONST.COURSE_COLORS[0],
+    slots:[{ weekStart:1, weekEnd:9, weekday:1, periodStart:1, periodEnd:2, location:'B118' }] },
+  { id:'c2', name:'人工智能安全与伦理', teacher:'韦星星', campus:'学院路校区',
+    mode:'全线上教学', color:CONST.COURSE_COLORS[1], slots:[] },
+  { id:'c3', name:'科学研究与学术写作', teacher:'黄雪飞、张莹莹', campus:'杭州国际创新研究院',
+    mode:'面授讲课', color:CONST.COURSE_COLORS[2],
+    slots:[{ weekStart:1, weekEnd:8, weekday:5, periodStart:2, periodEnd:5, location:'计算机房(R1-4093)' }] },
+  { id:'c4', name:'物流运输模型与算法', teacher:'周宇', campus:'杭州国际创新研究院',
+    mode:'面授讲课', color:CONST.COURSE_COLORS[3],
+    slots:[
+      { weekStart:6, weekEnd:11, weekday:1, periodStart:8, periodEnd:9, location:'教学一号楼3003' },
+      { weekStart:6, weekEnd:10, weekday:1, periodStart:10, periodEnd:10, location:'教学一号楼3003' },
+      { weekStart:6, weekEnd:10, weekday:2, periodStart:8, periodEnd:10, location:'教学一号楼3003' }
+    ] }
+];
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+var Util = {};
+
+Util.esc = function(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+};
+
+Util.parseISO = function(s) {
+  var p = s.split('-');
+  return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+};
+
+Util.toISO = function(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var dd = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
+};
+
+Util.today = function() { return Util.toISO(new Date()); };
+
+Util.addDays = function(iso, n) {
+  var d = Util.parseISO(iso);
+  d.setDate(d.getDate()+n);
+  return Util.toISO(d);
+};
+
+Util.weekdayOf = function(iso) {
+  var d = Util.parseISO(iso);
+  var w = d.getDay();
+  return w === 0 ? 7 : w;
+};
+
+Util.weekOf = function(iso) {
+  var start = Util.parseISO(CONST.SEMESTER_START);
+  var d = Util.parseISO(iso);
+  var diff = Math.floor((d - start) / 86400000);
+  if (diff < 0) return null;
+  var w = Math.floor(diff / 7) + 1;
+  return w > CONST.TOTAL_WEEKS ? null : w;
+};
+
+Util.weekStart = function(iso) {
+  var d = Util.parseISO(iso);
+  var w = d.getDay();
+  var diff = w === 0 ? 6 : w - 1;
+  d.setDate(d.getDate() - diff);
+  return Util.toISO(d);
+};
+
+Util.weekEnd = function(iso) { return Util.addDays(Util.weekStart(iso), 6); };
+
+Util.dateOf = function(week, weekday) {
+  var start = Util.parseISO(CONST.SEMESTER_START);
+  start.setDate(start.getDate() + (week-1)*7 + (weekday-1));
+  return Util.toISO(start);
+};
+
+Util.periodTime = function(ps, pe) {
+  return CONST.PERIODS[ps][0] + '-' + CONST.PERIODS[pe][1];
+};
+
+Util.nowHM = function() {
+  var d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+};
+
+Util.fmtCN = function(iso) {
+  var d = Util.parseISO(iso);
+  return (d.getMonth()+1)+'月'+d.getDate()+'日 '+CONST.WEEKDAY_LABELS[Util.weekdayOf(iso)-1];
+};
+
+Util.uid = function(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6); };
+
+/* ============================================================
+   STORE
+   ============================================================ */
+var Store = {};
+
+Store.load = function() {
+  try {
+    var raw = localStorage.getItem(CONST.STORAGE_KEY);
+    if (!raw) return Store.seed();
+    var data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.courses) || !Array.isArray(data.events)) {
+      return Store.seed();
+    }
+    return data;
+  } catch(e) { return Store.seed(); }
+};
+
+Store.save = function(data) {
+  localStorage.setItem(CONST.STORAGE_KEY, JSON.stringify(data));
+};
+
+Store.seed = function() {
+  var data = {
+    courses: JSON.parse(JSON.stringify(CONST.SEED_COURSES)),
+    events: [],
+    settings: { semesterStart: CONST.SEMESTER_START, totalWeeks: CONST.TOTAL_WEEKS, schemaVersion: CONST.SCHEMA_VERSION }
+  };
+  Store.save(data);
+  return data;
+};
+
+Store.clear = function() { localStorage.removeItem(CONST.STORAGE_KEY); };
+
+Store.usage = function(data) {
+  return new Blob([JSON.stringify(data)]).size;
+};
+
+Store.validate = function(obj) {
+  var errors = [];
+  if (!obj || typeof obj !== 'object') return ['不是有效对象'];
+  if (!Array.isArray(obj.courses)) errors.push('缺少 courses 数组');
+  if (!Array.isArray(obj.events)) errors.push('缺少 events 数组');
+  if (obj.courses) {
+    obj.courses.forEach(function(c, i) {
+      if (!c.name) errors.push('课程['+i+']缺少名称');
+      if (!Array.isArray(c.slots)) errors.push('课程['+i+']缺少 slots');
+    });
+  }
+  if (obj.events) {
+    obj.events.forEach(function(e, i) {
+      if (!e.title) errors.push('日程['+i+']缺少标题');
+      if (!e.date) errors.push('日程['+i+']缺少日期');
+    });
+  }
+  return errors;
+};
+
+/* ============================================================
+   SCHEDULE (pure functions)
+   ============================================================ */
+var Schedule = {};
+
+Schedule.courseBlocksForWeek = function(courses, week) {
+  var blocks = [];
+  courses.forEach(function(course) {
+    course.slots.forEach(function(slot) {
+      if (slot.weekStart <= week && week <= slot.weekEnd) {
+        blocks.push({
+          courseId: course.id,
+          course: course,
+          weekday: slot.weekday,
+          periodStart: slot.periodStart,
+          periodEnd: slot.periodEnd,
+          location: slot.location || '',
+          weekStart: slot.weekStart,
+          weekEnd: slot.weekEnd
+        });
+      }
+    });
+  });
+  // Merge adjacent periods for same course+weekRange+weekday
+  var merged = [];
+  var groups = {};
+  blocks.forEach(function(b) {
+    var key = b.courseId+'|'+b.weekStart+'-'+b.weekEnd+'|'+b.weekday;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(b);
+  });
+  Object.keys(groups).forEach(function(key) {
+    var grp = groups[key].sort(function(a,b){ return a.periodStart - b.periodStart; });
+    var cur = Object.assign({}, grp[0]);
+    for (var i = 1; i < grp.length; i++) {
+      if (grp[i].periodStart === cur.periodEnd + 1) {
+        cur.periodEnd = grp[i].periodEnd;
+      } else {
+        merged.push(cur);
+        cur = Object.assign({}, grp[i]);
+      }
+    }
+    merged.push(cur);
+  });
+  return merged;
+};
+
+Schedule.blocksOnDate = function(blocks, iso) {
+  var wd = Util.weekdayOf(iso);
+  return blocks.filter(function(b){ return b.weekday === wd; });
+};
+
+Schedule.blockState = function(block, nowISO, nowHM) {
+  var today = nowISO;
+  var blockDate = Util.dateOf(
+    Schedule._blockWeek(block, today), block.weekday
+  );
+  if (blockDate < today) return 'past';
+  if (blockDate > today) return 'future';
+  var bt = Util.periodTime(block.periodStart, block.periodEnd);
+  var bStart = bt.split('-')[0];
+  var bEnd = bt.split('-')[1];
+  if (nowHM >= bStart && nowHM <= bEnd) return 'ongoing';
+  if (nowHM > bEnd) return 'past';
+  return 'future';
+};
+
+Schedule._blockWeek = function(block, todayISO) {
+  var tw = Util.weekOf(todayISO);
+  if (tw && block.weekStart <= tw && tw <= block.weekEnd) return tw;
+  return block.weekStart;
+};
+
+Schedule.todayCourses = function(courses, nowISO, nowHM) {
+  var week = Util.weekOf(nowISO);
+  if (!week) return [];
+  var blocks = Schedule.courseBlocksForWeek(courses, week);
+  var dayBlocks = Schedule.blocksOnDate(blocks, nowISO);
+  return dayBlocks.map(function(b) {
+    return Object.assign({}, b, { state: Schedule.blockState(b, nowISO, nowHM) });
+  }).sort(function(a,b){ return a.periodStart - b.periodStart; });
+};
+
+Schedule.nextUp = function(courses, events, nowISO, nowHM) {
+  var candidates = [];
+  var week = Util.weekOf(nowISO);
+  if (week) {
+    var blocks = Schedule.courseBlocksForWeek(courses, week);
+    blocks.forEach(function(b) {
+      var bd = Util.dateOf(Schedule._blockWeek(b, nowISO), b.weekday);
+      var bt = Util.periodTime(b.periodStart, b.periodEnd);
+      if (bd > nowISO || (bd === nowISO && bt.split('-')[0] > nowHM)) {
+        candidates.push({ kind:'course', at: bd+'T'+bt.split('-')[0], title: b.course.name, location: b.location, date: bd, time: bt.split('-')[0] });
+      }
+    });
+  }
+  events.forEach(function(ev) {
+    if (ev.done) return;
+    var t = ev.startTime || '00:00';
+    if (ev.date > nowISO || (ev.date === nowISO && t > nowHM)) {
+      candidates.push({ kind:'event', at: ev.date+'T'+t, title: ev.title, location: ev.location, date: ev.date, time: t });
+    }
+  });
+  candidates.sort(function(a,b){ return a.at < b.at ? -1 : 1; });
+  return candidates.length ? candidates[0] : null;
+};
+
+Schedule.noTimeCourses = function(courses) {
+  return courses.filter(function(c){ return c.slots.length === 0; });
+};
+
+Schedule.slotLabel = function(slot) {
+  return slot.weekStart+'-'+slot.weekEnd+'周 · '+CONST.WEEKDAY_LABELS[slot.weekday-1]+' · '+slot.periodStart+'-'+slot.periodEnd+'节 · '+Util.periodTime(slot.periodStart, slot.periodEnd)+(slot.location ? ' · '+slot.location : '');
+};
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+var Events = {};
+
+Events.list = function(data) { return data.events; };
+
+Events.get = function(data, id) { return data.events.find(function(e){ return e.id === id; }); };
+
+Events.create = function(data, draft) {
+  var ev = Object.assign({
+    id: Util.uid('e'),
+    done: false,
+    createdAt: Date.now()
+  }, draft);
+  data.events.push(ev);
+  Store.save(data);
+  return ev;
+};
+
+Events.update = function(data, id, patch) {
+  var ev = Events.get(data, id);
+  if (ev) {
+    Object.assign(ev, patch);
+    Store.save(data);
+  }
+  return ev;
+};
+
+Events.remove = function(data, id) {
+  data.events = data.events.filter(function(e){ return e.id !== id; });
+  Store.save(data);
+};
+
+Events.toggle = function(data, id) {
+  var ev = Events.get(data, id);
+  if (ev) { ev.done = !ev.done; Store.save(data); }
+  return ev;
+};
+
+Events.filterBy = function(events, kind, nowISO) {
+  if (kind === 'all') return events.filter(function(e){ return !e.done; });
+  if (kind === 'done') return events.filter(function(e){ return e.done; });
+  if (kind === 'today') return events.filter(function(e){ return e.date === nowISO && !e.done; });
+  if (kind === 'week') {
+    var ws = Util.weekStart(nowISO);
+    var we = Util.weekEnd(nowISO);
+    return events.filter(function(e){ return e.date >= ws && e.date <= we && !e.done; });
+  }
+  return events;
+};
+
+Events.groupByDate = function(events, nowISO) {
+  var groups = {};
+  var order = [];
+  events.forEach(function(ev) {
+    var key = ev.date;
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(ev);
+  });
+  order.sort();
+  var nowWeek = Util.weekOf(nowISO);
+  return order.map(function(date) {
+    var w = Util.weekOf(date);
+    var title;
+    if (date === nowISO) title = '今天 · '+Util.fmtCN(date)+(w ? ' · 第'+w+'周' : '');
+    else if (date === Util.addDays(nowISO, 1)) title = '明天 · '+Util.fmtCN(date)+(w ? ' · 第'+w+'周' : '');
+    else {
+      var ws = Util.weekStart(date);
+      var we = Util.weekEnd(date);
+      var nws = Util.weekStart(Util.addDays(nowISO, 7));
+      if (ws === nws) title = '下周 · '+Util.fmtCN(ws)+'~'+Util.fmtCN(we)+(w ? ' · 第'+w+'周' : '');
+      else title = Util.fmtCN(ws)+'~'+Util.fmtCN(we)+(w ? ' · 第'+w+'周' : '');
+    }
+    return { key: date, title: title, items: groups[date] };
+  });
+};
+
+Events.sort = function(events) {
+  return events.slice().sort(function(a,b) {
+    var aHasTime = !!a.startTime;
+    var bHasTime = !!b.startTime;
+    if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
+    if (aHasTime && bHasTime) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.startTime < b.startTime ? -1 : 1;
+    }
+    return a.date > b.date ? -1 : (a.date < b.date ? 1 : 0);
+  });
+};
+
+Events.isOverdue = function(ev, nowISO) { return ev.date < nowISO && !ev.done; };
+
+Events.stats = function(events) {
+  var total = events.length;
+  var done = events.filter(function(e){ return e.done; }).length;
+  return { total: total, done: done };
+};
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+var Toast = {};
+
+Toast.show = function(msg, kind) {
+  kind = kind || 'ok';
+  var root = document.getElementById('toastRoot');
+  var el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  root.appendChild(el);
+  var dur = kind === 'err' ? 4000 : 2000;
+  setTimeout(function() {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.3s';
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300);
+  }, dur);
+};
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+var Modal = {};
+Modal.stack = [];
+Modal._scrollY = 0;
+
+Modal.open = function(opts) {
+  var root = document.getElementById('modalRoot');
+  var card = document.getElementById('modalCard');
+  Modal._scrollY = window.scrollY;
+  document.body.style.overflow = 'hidden';
+  root.classList.add('open');
+  card.innerHTML = opts.html || '';
+  Modal.stack.push(opts);
+  if (opts.onMount) opts.onMount(card);
+};
+
+Modal.close = function() {
+  var opts = Modal.stack.pop();
+  if (!Modal.stack.length) {
+    document.getElementById('modalRoot').classList.remove('open');
+    document.body.style.overflow = '';
+    window.scrollTo(0, Modal._scrollY);
+  } else {
+    var prev = Modal.stack[Modal.stack.length-1];
+    document.getElementById('modalCard').innerHTML = prev.html || '';
+    if (prev.onMount) prev.onMount(document.getElementById('modalCard'));
+  }
+  if (opts && opts.onClose) opts.onClose();
+};
+
+Modal.closeAll = function() {
+  while (Modal.stack.length) Modal.close();
+};
+
+Modal.confirm = function(opts) {
+  var html = '<div class="modal-drag" style="display:none"></div>' +
+    '<div class="modal-header"><h3>'+Util.esc(opts.title||'确认')+'</h3><span class="modal-close" data-action="close">✕</span></div>' +
+    '<div class="modal-body"><p style="font-size:0.9rem;">'+Util.esc(opts.text||'')+'</p></div>' +
+    '<div class="modal-footer'+(opts.danger?' danger':'')+'">' +
+    (opts.danger ? '<button class="btn btn-danger btn-sm" data-action="confirm-del">确认删除</button>' : '') +
+    '<span class="spacer" style="flex:1"></span>' +
+    '<button class="btn btn-ghost btn-sm" data-action="cancel">取消</button>' +
+    (!opts.danger ? '<button class="btn btn-primary btn-sm" data-action="confirm">确认</button>' : '') +
+    '</div>';
+  Modal.open({
+    html: html,
+    onMount: function(card) {
+      card.querySelector('[data-action="close"]').onclick = Modal.close;
+      card.querySelector('[data-action="cancel"]').onclick = Modal.close;
+      var confirmBtn = card.querySelector('[data-action="confirm"]') || card.querySelector('[data-action="confirm-del"]');
+      if (confirmBtn) confirmBtn.onclick = function() { Modal.close(); if(opts.onConfirm) opts.onConfirm(); };
+    }
+  });
+};
+
+/* ============================================================
+   FORM
+   ============================================================ */
+var Form = {};
+
+Form.openEvent = function(data, opts) {
+  var mode = opts.mode || 'create';
+  var ev = mode === 'edit' ? Events.get(data, opts.id) : null;
+  var preset = opts.preset || {};
+  var title = ev ? ev.title : (preset.title || '');
+  var date = ev ? ev.date : (preset.date || Util.today());
+  var startTime = ev ? (ev.startTime||'') : (preset.startTime || '');
+  var endTime = ev ? (ev.endTime||'') : (preset.endTime || '');
+  var location = ev ? (ev.location||'') : (preset.location || '');
+  var category = ev ? ev.category : (preset.category || 'personal');
+  var note = ev ? (ev.note||'') : '';
+
+  var catHTML = Object.keys(CONST.CATEGORIES).map(function(k) {
+    var c = CONST.CATEGORIES[k];
+    return '<button class="chip'+(category===k?' active':'')+'" data-cat="'+k+'" style="'+(category===k?'background:'+c.color+';color:#fff;border-color:'+c.color:'')+'"><span class="chip-dot" style="background:'+c.color+'"></span>'+c.label+'</button>';
+  }).join('');
+
+  var html = '<div class="modal-drag"></div>' +
+    '<div class="modal-header"><h3>'+(mode==='edit'?'编辑日程':'新建日程')+'</h3><span class="modal-close" data-action="close">✕</span></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">标题 <span class="req">*</span></label><input class="form-input" id="f-title" value="'+Util.esc(title)+'" placeholder="输入标题"><div class="form-error" id="err-title"></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">日期 <span class="req">*</span></label><input class="form-input" type="date" id="f-date" value="'+Util.esc(date)+'"><div class="form-error" id="err-date"></div></div>' +
+    '<div class="form-group"><label class="form-label">分类</label><div class="form-cats" id="f-cats">'+catHTML+'</div></div>' +
+    '</div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">开始时间</label><input class="form-input" type="time" id="f-start" value="'+Util.esc(startTime)+'"></div>' +
+    '<div class="form-group"><label class="form-label">结束时间</label><input class="form-input" type="time" id="f-end" value="'+Util.esc(endTime)+'"><div class="form-error" id="err-end"></div></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">地点</label><input class="form-input" id="f-loc" value="'+Util.esc(location)+'"></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-input form-textarea" id="f-note">'+Util.esc(note)+'</textarea></div>' +
+    '</div>' +
+    '<div class="modal-footer'+(mode==='edit'?' danger':'')+'">' +
+    (mode==='edit' ? '<button class="btn btn-danger btn-sm" data-action="del">删除</button>' : '') +
+    '<span class="spacer" style="flex:1"></span>' +
+    '<button class="btn btn-ghost" data-action="cancel">取消</button>' +
+    '<button class="btn btn-primary" data-action="save">保存</button>' +
+    '</div>';
+
+  Modal.open({
+    html: html,
+    onMount: function(card) {
+      var selCat = category;
+      card.querySelectorAll('[data-cat]').forEach(function(btn) {
+        btn.onclick = function() {
+          selCat = btn.dataset.cat;
+          card.querySelectorAll('[data-cat]').forEach(function(b) {
+            var c = CONST.CATEGORIES[b.dataset.cat];
+            b.className = 'chip';
+            b.style.cssText = '';
+          });
+          btn.className = 'chip active';
+          btn.style.cssText = 'background:'+CONST.CATEGORIES[selCat].color+';color:#fff;border-color:'+CONST.CATEGORIES[selCat].color;
+        };
+      });
+
+      card.querySelector('[data-action="close"]').onclick = Modal.close;
+      card.querySelector('[data-action="cancel"]').onclick = Modal.close;
+
+      card.querySelector('[data-action="save"]').onclick = function() {
+        var title = card.querySelector('#f-title').value.trim();
+        var date = card.querySelector('#f-date').value;
+        var startTime = card.querySelector('#f-start').value;
+        var endTime = card.querySelector('#f-end').value;
+        var location = card.querySelector('#f-loc').value.trim();
+        var note = card.querySelector('#f-note').value.trim();
+
+        var valid = true;
+        card.querySelector('#err-title').textContent = '';
+        card.querySelector('#err-date').textContent = '';
+        card.querySelector('#err-end').textContent = '';
+        card.querySelector('#f-title').classList.remove('error');
+        card.querySelector('#f-date').classList.remove('error');
+
+        if (!title) { card.querySelector('#err-title').textContent = '标题不能为空'; card.querySelector('#f-title').classList.add('error'); valid = false; }
+        if (!date) { card.querySelector('#err-date').textContent = '日期不能为空'; card.querySelector('#f-date').classList.add('error'); valid = false; }
+        if (startTime && endTime && endTime <= startTime) { card.querySelector('#err-end').textContent = '结束时间需晚于开始时间'; valid = false; }
+        if (!valid) return;
+
+        var draft = { title:title, date:date, startTime:startTime||null, endTime:endTime||null, location:location, category:selCat, note:note };
+        if (mode === 'edit') {
+          Events.update(data, opts.id, draft);
+          Toast.show('已保存');
+        } else {
+          Events.create(data, draft);
+          Toast.show('已保存');
+        }
+        Modal.close();
+        App.render();
+      };
+
+      if (mode === 'edit') {
+        card.querySelector('[data-action="del"]').onclick = function() {
+          Modal.confirm({
+            title: '确认删除',
+            text: '删除"'+ev.title+'"？此操作不可恢复。',
+            danger: true,
+            onConfirm: function() {
+              Events.remove(data, opts.id);
+              Toast.show('已删除');
+              App.render();
+            }
+          });
+        };
+      }
+
+      var titleInput = card.querySelector('#f-title');
+      titleInput.onblur = function() {
+        if (!titleInput.value.trim()) {
+          card.querySelector('#err-title').textContent = '标题不能为空';
+          titleInput.classList.add('error');
+        } else {
+          card.querySelector('#err-title').textContent = '';
+          titleInput.classList.remove('error');
+        }
+      };
+      titleInput.focus();
+    }
+  });
+};
+
+Form.openCourseDetail = function(data, courseId) {
+  var course = data.courses.find(function(c){ return c.id === courseId; });
+  if (!course) return;
+  var slotsHTML = course.slots.map(function(s) {
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--c-line);font-size:0.85rem;">'+Util.esc(Schedule.slotLabel(s))+'</div>';
+  }).join('') || '<div style="color:var(--c-text-3);font-size:0.85rem;">无固定时间</div>';
+
+  var html = '<div class="modal-drag"></div>' +
+    '<div class="modal-header"><h3><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+Util.esc(course.color)+';margin-right:8px;vertical-align:middle;"></span>'+Util.esc(course.name)+'</h3><span class="modal-close" data-action="close">✕</span></div>' +
+    '<div class="modal-body">' +
+    '<div style="font-size:0.85rem;color:var(--c-text-2);margin-bottom:12px;">'+Util.esc(course.teacher)+(course.campus?' · '+Util.esc(course.campus):'')+(course.mode?' · '+Util.esc(course.mode):'')+'</div>' +
+    '<div style="font-size:0.82rem;font-weight:600;margin-bottom:8px;">上课时段</div>' +
+    slotsHTML +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="btn btn-ghost btn-sm" data-action="edit">编辑</button>' +
+    '<span class="spacer" style="flex:1"></span>' +
+    '<button class="btn btn-primary btn-sm" data-action="close2">关闭</button>' +
+    '</div>';
+
+  Modal.open({
+    html: html,
+    onMount: function(card) {
+      card.querySelector('[data-action="close"]').onclick = Modal.close;
+      card.querySelector('[data-action="close2"]').onclick = Modal.close;
+      card.querySelector('[data-action="edit"]').onclick = function() { Form.openCourseEdit(data, courseId); };
+    }
+  });
+};
+
+Form.openCourseEdit = function(data, courseId) {
+  var course = data.courses.find(function(c){ return c.id === courseId; });
+  if (!course) return;
+
+  var slotsHTML = course.slots.map(function(s, i) {
+    return '<div class="slot-row" data-idx="'+i+'">' +
+      '<input type="number" min="1" max="19" value="'+s.weekStart+'" class="slot-ws" title="起始周">' +
+      '<input type="number" min="1" max="19" value="'+s.weekEnd+'" class="slot-we" title="结束周">' +
+      '<select class="slot-wd"><option value="1"'+(s.weekday===1?' selected':'')+'>周一</option><option value="2"'+(s.weekday===2?' selected':'')+'>周二</option><option value="3"'+(s.weekday===3?' selected':'')+'>周三</option><option value="4"'+(s.weekday===4?' selected':'')+'>周四</option><option value="5"'+(s.weekday===5?' selected':'')+'>周五</option><option value="6"'+(s.weekday===6?' selected':'')+'>周六</option><option value="7"'+(s.weekday===7?' selected':'')+'>周日</option></select>' +
+      '<input type="number" min="1" max="14" value="'+s.periodStart+'" class="slot-ps" title="起始节次">' +
+      '<input type="number" min="1" max="14" value="'+s.periodEnd+'" class="slot-pe" title="结束节次">' +
+      '<input type="text" value="'+Util.esc(s.location||'')+'" class="slot-loc" placeholder="地点">' +
+      '<span class="slot-del" data-del="'+i+'">✕</span>' +
+    '</div>';
+  }).join('');
+
+  var html = '<div class="modal-drag"></div>' +
+    '<div class="modal-header"><h3>编辑课程</h3><span class="modal-close" data-action="close">✕</span></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">课程名称 <span class="req">*</span></label><input class="form-input" id="fc-name" value="'+Util.esc(course.name)+'"></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">教师</label><input class="form-input" id="fc-teacher" value="'+Util.esc(course.teacher||'')+'"></div>' +
+    '<div class="form-group"><label class="form-label">校区</label><input class="form-input" id="fc-campus" value="'+Util.esc(course.campus||'')+'"></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">上课方式</label><input class="form-input" id="fc-mode" value="'+Util.esc(course.mode||'')+'"></div>' +
+    '<div class="form-group"><label class="form-label">颜色</label><div class="form-cats" id="fc-colors">'+CONST.COURSE_COLORS.map(function(c) {
+      return '<button class="chip'+(course.color===c?' active':'')+'" data-color="'+c+'" style="'+(course.color===c?'background:'+c+';color:#fff;border-color:'+c:'')+'"><span class="chip-dot" style="background:'+c+'"></span></button>';
+    }).join('')+'</div></div>' +
+    '<div class="form-group"><label class="form-label">上课时段</label><div id="fc-slots">'+slotsHTML+'</div><button class="btn btn-ghost btn-sm" id="fc-add-slot" style="margin-top:6px;">+ 添加时段</button></div>' +
+    '</div>' +
+    '<div class="modal-footer danger">' +
+    '<button class="btn btn-danger btn-sm" data-action="del-course">删除课程</button>' +
+    '<span class="spacer" style="flex:1"></span>' +
+    '<button class="btn btn-ghost" data-action="cancel">取消</button>' +
+    '<button class="btn btn-primary" data-action="save">保存</button>' +
+    '</div>';
+
+  Modal.open({
+    html: html,
+    onMount: function(card) {
+      var selColor = course.color;
+      card.querySelectorAll('#fc-colors [data-color]').forEach(function(btn) {
+        btn.onclick = function() {
+          selColor = btn.dataset.color;
+          card.querySelectorAll('#fc-colors [data-color]').forEach(function(b) { b.className='chip'; b.style.cssText=''; });
+          btn.className = 'chip active';
+          btn.style.cssText = 'background:'+selColor+';color:#fff;border-color:'+selColor;
+        };
+      });
+
+      card.querySelector('#fc-add-slot').onclick = function() {
+        var slotsDiv = card.querySelector('#fc-slots');
+        var row = document.createElement('div');
+        row.className = 'slot-row';
+        row.innerHTML = '<input type="number" min="1" max="19" value="1" class="slot-ws">' +
+          '<input type="number" min="1" max="19" value="1" class="slot-we">' +
+          '<select class="slot-wd"><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="7">周日</option></select>' +
+          '<input type="number" min="1" max="14" value="1" class="slot-ps">' +
+          '<input type="number" min="1" max="14" value="1" class="slot-pe">' +
+          '<input type="text" value="" class="slot-loc" placeholder="地点">' +
+          '<span class="slot-del" data-del="new">✕</span>';
+        slotsDiv.appendChild(row);
+      };
+
+      card.querySelector('#fc-slots').addEventListener('click', function(e) {
+        if (e.target.classList.contains('slot-del')) {
+          e.target.closest('.slot-row').remove();
+        }
+      });
+
+      card.querySelector('[data-action="close"]').onclick = Modal.close;
+      card.querySelector('[data-action="cancel"]').onclick = Modal.close;
+
+      card.querySelector('[data-action="save"]').onclick = function() {
+        var name = card.querySelector('#fc-name').value.trim();
+        if (!name) { Toast.show('课程名称不能为空','err'); return; }
+        var slots = [];
+        card.querySelectorAll('#fc-slots .slot-row').forEach(function(row) {
+          slots.push({
+            weekStart: parseInt(row.querySelector('.slot-ws').value)||1,
+            weekEnd: parseInt(row.querySelector('.slot-we').value)||1,
+            weekday: parseInt(row.querySelector('.slot-wd').value)||1,
+            periodStart: parseInt(row.querySelector('.slot-ps').value)||1,
+            periodEnd: parseInt(row.querySelector('.slot-pe').value)||1,
+            location: row.querySelector('.slot-loc').value.trim()
+          });
+        });
+        course.name = name;
+        course.teacher = card.querySelector('#fc-teacher').value.trim();
+        course.campus = card.querySelector('#fc-campus').value.trim();
+        course.mode = card.querySelector('#fc-mode').value.trim();
+        course.color = selColor;
+        course.slots = slots;
+        Store.save(data);
+        Toast.show('已保存');
+        Modal.close();
+        App.render();
+      };
+
+      card.querySelector('[data-action="del-course"]').onclick = function() {
+        Modal.confirm({
+          title: '确认删除课程',
+          text: '删除"'+course.name+'"？此操作不可恢复。',
+          danger: true,
+          onConfirm: function() {
+            data.courses = data.courses.filter(function(c){ return c.id !== courseId; });
+            Store.save(data);
+            Toast.show('已删除');
+            Modal.close();
+            App.render();
+          }
+        });
+      };
+    }
+  });
+};
+
+/* ============================================================
+   BACKUP
+   ============================================================ */
+var Backup = {};
+
+Backup.open = function(data) {
+  var usage = Store.usage(data);
+  var kb = (usage/1024).toFixed(1);
+  var html = '<div class="modal-drag"></div>' +
+    '<div class="modal-header"><h3>数据备份</h3><span class="modal-close" data-action="close">✕</span></div>' +
+    '<div class="modal-body">' +
+    '<div style="font-size:0.85rem;color:var(--c-text-2);margin-bottom:16px;">当前存储: '+kb+' KB · 课程 '+data.courses.length+' 门 · 日程 '+data.events.length+' 条</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    '<button class="btn btn-ghost" id="bk-export">导出 JSON</button>' +
+    '<button class="btn btn-ghost" id="bk-import">导入 JSON</button>' +
+    '<button class="btn btn-ghost" id="bk-restore">恢复预置课表</button>' +
+    '<button class="btn btn-ghost" id="bk-clear" style="color:var(--c-danger);">清空全部数据</button>' +
+    '</div>' +
+    '<input type="file" id="bk-file" accept=".json" style="display:none">' +
+    '</div>';
+
+  Modal.open({
+    html: html,
+    onMount: function(card) {
+      card.querySelector('[data-action="close"]').onclick = Modal.close;
+
+      card.querySelector('#bk-export').onclick = function() {
+        var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'schedule-backup-'+Util.today()+'.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        Toast.show('已导出');
+      };
+
+      card.querySelector('#bk-import').onclick = function() { card.querySelector('#bk-file').click(); };
+      card.querySelector('#bk-file').onchange = function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function() {
+          try {
+            var imported = JSON.parse(reader.result);
+            var errors = Store.validate(imported);
+            if (errors.length) { Toast.show('文件格式不正确: '+errors[0], 'err'); return; }
+            Modal.confirm({
+              title: '确认导入',
+              text: '导入将覆盖当前全部数据，确定继续？',
+              onConfirm: function() {
+                data.courses = imported.courses;
+                data.events = imported.events;
+                Store.save(data);
+                Toast.show('导入成功');
+                Modal.close();
+                App.render();
+              }
+            });
+          } catch(e) { Toast.show('文件格式不正确', 'err'); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      };
+
+      card.querySelector('#bk-restore').onclick = function() {
+        Modal.confirm({
+          title: '恢复预置课表',
+          text: '将重置课程为预置的 4 门课程，日程数据保留。确定？',
+          onConfirm: function() {
+            data.courses = JSON.parse(JSON.stringify(CONST.SEED_COURSES));
+            Store.save(data);
+            Toast.show('已恢复预置课表');
+            Modal.close();
+            App.render();
+          }
+        });
+      };
+
+      card.querySelector('#bk-clear').onclick = function() {
+        Modal.confirm({
+          title: '清空全部数据',
+          text: '将删除所有课程和日程，此操作不可恢复。确定？',
+          danger: true,
+          onConfirm: function() {
+            data.courses = [];
+            data.events = [];
+            Store.save(data);
+            Toast.show('已清空');
+            Modal.close();
+            App.render();
+          }
+        });
+      };
+    }
+  });
+};
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+var Render = {};
+
+Render.home = function(data) {
+  var nowISO = Util.today();
+  var nowHM = Util.nowHM();
+  var week = Util.weekOf(nowISO);
+  var isHoliday = !week;
+  var progress = week ? Math.round(week / CONST.TOTAL_WEEKS * 100) : 0;
+
+  var todayCourses = Schedule.todayCourses(data.courses, nowISO, nowHM);
+  var nextUp = Schedule.nextUp(data.courses, data.events, nowISO, nowHM);
+  var todayEvents = data.events.filter(function(e){ return e.date === nowISO; });
+  var todayStats = Events.stats(todayEvents);
+
+  var coursesHTML = todayCourses.length ? todayCourses.map(function(b) {
+    var cls = b.state === 'past' ? 'is-past' : (b.state === 'ongoing' ? 'is-ongoing' : '');
+    var statusHTML = b.state === 'ongoing' ? '<span class="cr-status ongoing">进行中</span>' : (b.state === 'past' ? '<span class="cr-status" style="background:var(--c-text-3);color:#fff;">已结束</span>' : '<span class="cr-status" style="background:var(--c-bg);color:var(--c-text-3);">未开始</span>');
+    return '<div class="course-row '+cls+'" data-course="'+b.courseId+'">' +
+      '<span class="cr-time">'+Util.periodTime(b.periodStart, b.periodEnd)+'</span>' +
+      '<span class="cr-name">'+Util.esc(b.course.name)+'</span>' +
+      '<span class="cr-meta">'+Util.esc(b.course.teacher)+' · '+Util.esc(b.location)+'</span>' +
+      statusHTML +
+    '</div>';
+  }).join('') : '<div class="empty-state">今天没有课，好好安排一下</div>';
+
+  var nextHTML = nextUp ?
+    '<div class="nc-title">'+Util.esc(nextUp.title)+'</div>' +
+    '<div class="nc-time">'+Util.esc(nextUp.date)+' · '+Util.esc(nextUp.time)+(nextUp.location?' · '+Util.esc(nextUp.location):'')+'</div>' +
+    '<div class="nc-countdown" id="countdown">计算中...</div>' +
+    '<div class="nc-link" data-goto="table">去课表 &gt;</div>' :
+    '<div class="empty-state" style="padding:16px;">暂无安排</div>';
+
+  var todosHTML = todayEvents.length ? todayEvents.map(function(ev) {
+    var cat = CONST.CATEGORIES[ev.category] || CONST.CATEGORIES.personal;
+    return '<div class="todo-row" data-event="'+ev.id+'">' +
+      '<span class="todo-check'+(ev.done?' done':'')+'" data-toggle="'+ev.id+'">'+(ev.done?'✓':'')+'</span>' +
+      '<span class="todo-title'+(ev.done?' done':'')+'">'+Util.esc(ev.title)+'</span>' +
+      '<span class="todo-time">'+(ev.startTime||'全天')+'</span>' +
+      '<span class="todo-cat" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>' +
+    '</div>';
+  }).join('') : '<div class="empty-state" style="padding:16px;">今天没有待办</div>';
+
+  return '<div class="hm-banner">' +
+    '<div class="hm-date">'+Util.fmtCN(nowISO)+'</div>' +
+    '<div class="hm-week">'+(isHoliday ? '假期 / 非教学周' : '第 '+week+' 周 / 共 '+CONST.TOTAL_WEEKS+' 周')+'</div>' +
+    '<div class="hm-progress"><div class="hm-progress-bar"><div class="hm-progress-fill" style="width:'+progress+'%"></div></div><div class="hm-progress-text">学期进度 '+progress+'%</div></div>' +
+    '</div>' +
+    '<div class="hm-cols">' +
+    '<div><div class="card"><div class="card-title">今日课程 <span class="count">('+todayCourses.length+')</span></div>'+coursesHTML+'</div></div>' +
+    '<div>' +
+    '<div class="card next-card"><div class="card-title">下一个安排</div>'+nextHTML+'</div>' +
+    '<div class="card"><div class="card-title">今日待办 <span class="count">(已完成 '+todayStats.done+' / '+todayStats.total+')</span></div>'+todosHTML+'<div style="text-align:center;margin-top:8px;"><button class="btn btn-ghost btn-sm" id="hm-add-todo">+ 添加待办</button></div></div>' +
+    '</div></div>';
+};
+
+Render.timetable = function(data) {
+  var nowISO = Util.today();
+  var nowHM = Util.nowHM();
+  var week = App.state.week || Util.weekOf(nowISO) || 1;
+  if (week < 1) week = 1;
+  if (week > CONST.TOTAL_WEEKS) week = CONST.TOTAL_WEEKS;
+  App.state.week = week;
+
+  var weekStartISO = Util.dateOf(week, 1);
+  var weekEndISO = Util.dateOf(week, 7);
+  var blocks = Schedule.courseBlocksForWeek(data.courses, week);
+  var noTime = Schedule.noTimeCourses(data.courses);
+  var todayWD = Util.weekdayOf(nowISO);
+  var currentWeek = Util.weekOf(nowISO) === week;
+
+  var noTimeHTML = noTime.length ? '<div class="tt-fixed-strip">无固定时间课程：'+noTime.map(function(c){ return Util.esc(c.name)+' · '+Util.esc(c.teacher)+' · '+Util.esc(c.mode); }).join('；')+'</div>' : '';
+
+  // Desktop grid
+  var gridHTML = '<div class="tt-grid">';
+  // Header row
+  gridHTML += '<div class="tt-axis-cell"></div>';
+  for (var d = 1; d <= 7; d++) {
+    var dateISO = Util.dateOf(week, d);
+    gridHTML += '<div class="tt-day-head'+(d===todayWD&&currentWeek?' is-today':'')+'" data-date="'+dateISO+'">'+CONST.WEEKDAY_LABELS[d-1]+'<br><span style="font-weight:400;font-size:0.7rem;">'+(parseInt(dateISO.split('-')[2]))+'</span></div>';
+  }
+  // Period rows
+  for (var p = 1; p <= 14; p++) {
+    var timeLabel = (p===1||p===6||p===11) ? CONST.PERIODS[p][0] : '';
+    gridHTML += '<div class="tt-axis-cell">'+(timeLabel?p+'<br><span style="font-size:0.6rem;">'+timeLabel+'</span>':p)+'</div>';
+    for (var d = 1; d <= 7; d++) {
+      gridHTML += '<div class="tt-cell" data-date="'+Util.dateOf(week,d)+'" data-period="'+p+'"><span class="cell-plus">+</span></div>';
+    }
+  }
+  // Course blocks
+  blocks.forEach(function(b) {
+    var top = (b.periodStart - 1) * 46;
+    var height = (b.periodEnd - b.periodStart + 1) * 46 - 6;
+    var col = b.weekday + 1;
+    gridHTML += '<div class="tt-block" style="top:'+top+'px;height:'+height+'px;grid-column:'+col+';background:'+Util.esc(b.course.color)+';" data-course="'+b.courseId+'" data-block-weekstart="'+b.weekStart+'" data-block-weekend="'+b.weekEnd+'" data-block-weekday="'+b.weekday+'" data-block-ps="'+b.periodStart+'" data-block-pe="'+b.periodEnd+'">' +
+      '<div class="blk-name">'+Util.esc(b.course.name)+'</div>' +
+      '<div class="blk-loc">'+Util.esc(b.location)+'</div>' +
+    '</div>';
+  });
+  // Now line
+  if (currentWeek) {
+    var nowPeriod = 0;
+    for (var p = 1; p <= 14; p++) {
+      if (nowHM >= CONST.PERIODS[p][0] && nowHM <= CONST.PERIODS[p][1]) { nowPeriod = p; break; }
+      if (nowHM < CONST.PERIODS[p][0]) { nowPeriod = p - 0.5; break; }
+    }
+    if (nowPeriod > 0) {
+      var lineTop = (nowPeriod - 1) * 46 + ((nowHM - CONST.PERIODS[Math.max(1,Math.floor(nowPeriod))][0]) / 45) * 46;
+      gridHTML += '<div class="tt-nowline" style="top:'+Math.max(0,lineTop)+'px;"></div>';
+    }
+  }
+  gridHTML += '</div>';
+
+  // Mobile day view
+  var mobileDate = App.state.mobileDate || nowISO;
+  var mobileWD = Util.weekdayOf(mobileDate);
+  var dayBlocks = Schedule.blocksOnDate(blocks, mobileDate).sort(function(a,b){ return a.periodStart-b.periodStart; });
+
+  var daybarHTML = '<div class="tt-daybar">';
+  for (var d = 1; d <= 7; d++) {
+    var dateISO = Util.dateOf(week, d);
+    var hasCourses = blocks.some(function(b){ return b.weekday === d; });
+    daybarHTML += '<div class="day-chip'+(dateISO===mobileDate?' active':'')+'" data-mobile-date="'+dateISO+'">' +
+      '<span>'+CONST.WEEKDAY_LABELS[d-1].slice(1)+'</span>' +
+      '<span style="font-size:0.65rem;">'+(parseInt(dateISO.split('-')[2]))+'</span>' +
+      (hasCourses?'<span class="has-dot"></span>':'') +
+    '</div>';
+  }
+  daybarHTML += '</div>';
+
+  var daylistHTML = '<div class="tt-daylist">';
+  var lastEnd = 0;
+  dayBlocks.forEach(function(b) {
+    if (b.periodStart > lastEnd + 1) {
+      for (var fp = lastEnd + 1; fp < b.periodStart; fp++) {
+        daylistHTML += '<div class="tl-freerow"><span>'+CONST.PERIODS[fp][0]+' 空闲</span><span class="free-plus" data-free-date="'+mobileDate+'" data-free-period="'+fp+'">+</span></div>';
+      }
+    }
+    daylistHTML += '<div class="tl-row"><div class="tl-bar" style="background:'+Util.esc(b.course.color)+';height:'+(b.periodEnd-b.periodStart+1)*40+'px;"></div><div class="tl-time">'+Util.periodTime(b.periodStart,b.periodEnd)+'</div><div class="tl-body"><div class="tl-name">'+Util.esc(b.course.name)+'</div><div class="tl-meta">'+Util.esc(b.location)+(b.course.teacher?' · '+Util.esc(b.course.teacher):'')+'</div></div></div>';
+    lastEnd = b.periodEnd;
+  });
+  if (lastEnd < 14) {
+    for (var fp = lastEnd + 1; fp <= 14; fp++) {
+      daylistHTML += '<div class="tl-freerow"><span>'+CONST.PERIODS[fp][0]+' 空闲</span><span class="free-plus" data-free-date="'+mobileDate+'" data-free-period="'+fp+'">+</span></div>';
+    }
+  }
+  if (dayBlocks.length === 0) {
+    daylistHTML += '<div class="empty-state">这天没有课</div>';
+  }
+  daylistHTML += '</div>';
+
+  return noTimeHTML +
+    '<div class="tt-toolbar">' +
+    '<button class="btn btn-ghost btn-sm" id="tt-prev"'+(week<=1?' disabled':'')+'>◀ 上一周</button>' +
+    '<span class="tt-week-title">第 '+week+' 周 ('+Util.fmtCN(weekStartISO)+' ~ '+Util.fmtCN(weekEndISO)+')</span>' +
+    '<button class="btn btn-ghost btn-sm" id="tt-today">回到本周</button>' +
+    '<button class="btn btn-ghost btn-sm" id="tt-next"'+(week>=CONST.TOTAL_WEEKS?' disabled':'')+'>下一周 ▶</button>' +
+    '</div>' +
+    '<div class="tt-grid-wrap">'+gridHTML+'</div>' +
+    '<div class="tt-mobile">'+daybarHTML+daylistHTML+'</div>';
+};
+
+Render.agenda = function(data) {
+  var nowISO = Util.today();
+  var filter = App.state.agendaFilter || 'today';
+  var filtered = Events.filterBy(data.events, filter, nowISO);
+  var sorted = Events.sort(filtered);
+  var groups = Events.groupByDate(sorted, nowISO);
+
+  var filtersHTML = ['today','week','all','done'].map(function(k) {
+    var labels = {today:'今天',week:'本周',all:'全部',done:'已完成'};
+    return '<button class="chip'+(filter===k?' active':'')+'" data-filter="'+k+'">'+labels[k]+'</button>';
+  }).join('');
+
+  var itemsHTML = '';
+  if (groups.length === 0) {
+    itemsHTML = '<div class="empty-state">这个范围还没有安排<br><button class="btn btn-primary btn-sm" style="margin-top:12px;" id="ag-empty-new">去新建</button></div>';
+  } else {
+    groups.forEach(function(g) {
+      itemsHTML += '<div class="ag-group-head">'+Util.esc(g.title)+' <span style="font-weight:400;color:var(--c-text-3);">('+g.items.length+')</span></div>';
+      g.items.forEach(function(ev) {
+        var cat = CONST.CATEGORIES[ev.category] || CONST.CATEGORIES.personal;
+        var overdue = Events.isOverdue(ev, nowISO);
+        itemsHTML += '<div class="ag-item" data-event="'+ev.id+'">' +
+          '<span class="ag-check'+(ev.done?' done':'')+'" data-toggle="'+ev.id+'">'+(ev.done?'✓':'')+'</span>' +
+          '<div class="ag-body">' +
+          '<div class="ag-title'+(ev.done?' done':'')+'">'+Util.esc(ev.title)+'</div>' +
+          '<div class="ag-meta'+(overdue?' overdue':'')+'">'+(ev.startTime?(ev.endTime?ev.startTime+'-'+ev.endTime:ev.startTime):'全天')+(ev.location?' · '+Util.esc(ev.location):'')+(overdue?' · 已逾期':'')+'</div>' +
+          '</div>' +
+          '<span class="ag-cat" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>' +
+        '</div>';
+      });
+    });
+  }
+
+  return '<div class="ag-toolbar">' +
+    '<div class="ag-filters">'+filtersHTML+'</div>' +
+    '<button class="btn btn-primary btn-sm btn-new-desktop" id="ag-new">+ 新建日程</button>' +
+    '</div>' +
+    itemsHTML;
+};
+
+/* ============================================================
+   APP
+   ============================================================ */
+var App = {};
+App.state = { view: 'home', week: null, agendaFilter: 'today', mobileDate: null };
+App.data = null;
+App._ticker = null;
+
+App.init = function() {
+  App.data = Store.load();
+  App.state.week = Util.weekOf(Util.today()) || 1;
+  App.state.mobileDate = Util.today();
+  App.bindEvents();
+  App.render();
+  App.startTicker();
+
+  // Self-test
+  if (location.search.indexOf('selftest=1') !== -1) {
+    SelfTest.run();
+  }
+};
+
+App.setView = function(view) {
+  App.state.view = view;
+  document.querySelectorAll('#tabs .tab, #tabbar .tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+  document.getElementById('view-home').style.display = view==='home'?'':'none';
+  document.getElementById('view-table').style.display = view==='table'?'':'none';
+  document.getElementById('view-agenda').style.display = view==='agenda'?'':'none';
+  App.render();
+  if (view === 'home') App.startTicker(); else App.stopTicker();
+};
+
+App.render = function() {
+  var data = App.data;
+  var week = Util.weekOf(Util.today());
+  var badge = document.getElementById('weekBadge');
+  if (week) {
+    badge.textContent = '第'+week+'周';
+    badge.className = 'week-badge';
+  } else {
+    badge.textContent = '假期';
+    badge.className = 'week-badge is-holiday';
+  }
+
+  document.getElementById('view-home').innerHTML = Render.home(data);
+  document.getElementById('view-table').innerHTML = Render.timetable(data);
+  document.getElementById('view-agenda').innerHTML = Render.agenda(data);
+};
+
+App.startTicker = function() {
+  App.stopTicker();
+  App._ticker = setInterval(function() {
+    if (App.state.view === 'home') {
+      var el = document.getElementById('countdown');
+      if (el) {
+        var nowISO = Util.today();
+        var nowHM = Util.nowHM();
+        var next = Schedule.nextUp(App.data.courses, App.data.events, nowISO, nowHM);
+        if (next) {
+          var nextDate = Util.parseISO(next.date);
+          var nextTime = next.time.split(':');
+          nextDate.setHours(parseInt(nextTime[0]), parseInt(nextTime[1]), 0);
+          var diff = nextDate - new Date();
+          if (diff > 0) {
+            var days = Math.floor(diff/86400000);
+            var hrs = Math.floor((diff%86400000)/3600000);
+            var mins = Math.floor((diff%3600000)/60000);
+            el.textContent = '还有 '+days+' 天 '+String(hrs).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+          } else {
+            el.textContent = '正在进行中';
+          }
+        }
+      }
+    }
+  }, 60000);
+};
+
+App.stopTicker = function() { if (App._ticker) { clearInterval(App._ticker); App._ticker = null; } };
+
+App.bindEvents = function() {
+  // Tab navigation
+  document.querySelectorAll('[data-view]').forEach(function(tab) {
+    tab.addEventListener('click', function() { App.setView(tab.dataset.view); });
+  });
+
+  // Backup button
+  document.getElementById('btnBackup').addEventListener('click', function() { Backup.open(App.data); });
+
+  // FAB
+  document.getElementById('fab').addEventListener('click', function() { Form.openEvent(App.data, {mode:'create'}); });
+
+  // Delegated clicks on #view
+  document.getElementById('view').addEventListener('click', function(e) {
+    var target = e.target;
+
+    // Home: course row -> go to timetable
+    var courseRow = target.closest('.course-row');
+    if (courseRow) { App.setView('table'); return; }
+
+    // Home: todo toggle
+    var todoCheck = target.closest('[data-toggle]');
+    if (todoCheck && todoCheck.classList.contains('todo-check')) {
+      Events.toggle(App.data, todoCheck.dataset.toggle);
+      Toast.show(todoCheck.classList.contains('done') ? '已恢复' : '已完成');
+      App.render();
+      return;
+    }
+
+    // Home: add todo
+    if (target.id === 'hm-add-todo') { Form.openEvent(App.data, {mode:'create', preset:{date:Util.today(), category:'personal'}}); return; }
+
+    // Home: go to table link
+    if (target.dataset && target.dataset.goto === 'table') { App.setView('table'); return; }
+
+    // Timetable: prev/next/today
+    if (target.id === 'tt-prev') { App.state.week = Math.max(1, App.state.week-1); App.render(); return; }
+    if (target.id === 'tt-next') { App.state.week = Math.min(CONST.TOTAL_WEEKS, App.state.week+1); App.render(); return; }
+    if (target.id === 'tt-today') { App.state.week = Util.weekOf(Util.today())||1; App.state.mobileDate = Util.today(); App.render(); return; }
+
+    // Timetable: mobile day chip
+    var dayChip = target.closest('.day-chip');
+    if (dayChip && dayChip.dataset.mobileDate) { App.state.mobileDate = dayChip.dataset.mobileDate; App.render(); return; }
+
+    // Timetable: cell click (desktop)
+    var cell = target.closest('.tt-cell');
+    if (cell && cell.dataset.date) {
+      var p = parseInt(cell.dataset.period);
+      var ps = p, pe = p;
+      Form.openEvent(App.data, {mode:'create', preset:{date:cell.dataset.date, startTime:CONST.PERIODS[ps][0], endTime:CONST.PERIODS[pe][1]}});
+      return;
+    }
+
+    // Timetable: free row plus (mobile)
+    var freePlus = target.closest('.free-plus');
+    if (freePlus) {
+      var fp = parseInt(freePlus.dataset.freePeriod);
+      Form.openEvent(App.data, {mode:'create', preset:{date:freePlus.dataset.freeDate, startTime:CONST.PERIODS[fp][0], endTime:CONST.PERIODS[fp][1]}});
+      return;
+    }
+
+    // Timetable: block click
+    var block = target.closest('.tt-block');
+    if (block) { Form.openCourseDetail(App.data, block.dataset.course); return; }
+
+    // Agenda: filter
+    var filterChip = target.closest('[data-filter]');
+    if (filterChip) { App.state.agendaFilter = filterChip.dataset.filter; App.render(); return; }
+
+    // Agenda: toggle
+    var agCheck = target.closest('[data-toggle]');
+    if (agCheck && agCheck.classList.contains('ag-check')) {
+      Events.toggle(App.data, agCheck.dataset.toggle);
+      Toast.show(agCheck.classList.contains('done') ? '已恢复' : '已完成');
+      App.render();
+      return;
+    }
+
+    // Agenda: item click -> edit
+    var agItem = target.closest('.ag-item');
+    if (agItem && !target.classList.contains('ag-check')) {
+      Form.openEvent(App.data, {mode:'edit', id:agItem.dataset.event});
+      return;
+    }
+
+    // Agenda: new button
+    if (target.id === 'ag-new' || target.id === 'ag-empty-new') { Form.openEvent(App.data, {mode:'create'}); return; }
+  });
+
+  // Modal overlay click
+  document.getElementById('modalRoot').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) Modal.close();
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { if (Modal.stack.length) Modal.close(); return; }
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+    if (App.state.view === 'table') {
+      if (e.key === 'ArrowLeft') { App.state.week = Math.max(1, App.state.week-1); App.render(); }
+      if (e.key === 'ArrowRight') { App.state.week = Math.min(CONST.TOTAL_WEEKS, App.state.week+1); App.render(); }
+    }
+    if (App.state.view === 'agenda' && e.key === 'n') { Form.openEvent(App.data, {mode:'create'}); }
+  });
+};
+
+/* ============================================================
+   SELF TEST
+   ============================================================ */
+var SelfTest = {};
+SelfTest.pass = 0;
+SelfTest.fail = 0;
+
+SelfTest.assert = function(name, actual, expected) {
+  var ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (ok) { SelfTest.pass++; console.log('  ✓ '+name); }
+  else { SelfTest.fail++; console.error('  ✗ '+name+' | expected: '+JSON.stringify(expected)+' | actual: '+JSON.stringify(actual)); }
+};
+
+SelfTest.run = function() {
+  console.log('=== Self Test ===');
+  SelfTest.pass = 0; SelfTest.fail = 0;
+
+  // DateUtil
+  SelfTest.assert('parseISO 2026-09-07', Util.parseISO('2026-09-07').getDate(), 7);
+  SelfTest.assert('weekOf 09-07 -> 1', Util.weekOf('2026-09-07'), 1);
+  SelfTest.assert('weekOf 09-23 -> 3', Util.weekOf('2026-09-23'), 3);
+  SelfTest.assert('weekOf 10-12 -> 6', Util.weekOf('2026-10-12'), 6);
+  SelfTest.assert('weekOf 01-17 -> 19', Util.weekOf('2027-01-17'), 19);
+  SelfTest.assert('weekOf 2027-03-01 -> null', Util.weekOf('2027-03-01'), null);
+  SelfTest.assert('weekdayOf 09-23 (Wed) -> 3', Util.weekdayOf('2026-09-23'), 3);
+  SelfTest.assert('periodTime 2,5', Util.periodTime(2,5), '08:50-12:15');
+  SelfTest.assert('periodTime 8,9', Util.periodTime(8,9), '15:50-17:25');
+  SelfTest.assert('dateOf week1 mon', Util.dateOf(1,1), '2026-09-07');
+  SelfTest.assert('dateOf week6 mon', Util.dateOf(6,1), '2026-10-12');
+
+  // Schedule
+  var courses = CONST.SEED_COURSES;
+  var w1 = Schedule.courseBlocksForWeek(courses, 1);
+  SelfTest.assert('week1 blocks count', w1.length, 2);
+  SelfTest.assert('week1 has 可靠性', w1.some(function(b){return b.courseId==='c1';}), true);
+  SelfTest.assert('week1 has 学术写作', w1.some(function(b){return b.courseId==='c3';}), true);
+  SelfTest.assert('week1 no 物流运输', w1.some(function(b){return b.courseId==='c4';}), false);
+
+  var w6 = Schedule.courseBlocksForWeek(courses, 6);
+  var mon6 = w6.filter(function(b){return b.weekday===1;});
+  SelfTest.assert('week6 mon blocks', mon6.length, 3);
+
+  var w11 = Schedule.courseBlocksForWeek(courses, 11);
+  var mon11 = w11.filter(function(b){return b.weekday===1;});
+  SelfTest.assert('week11 mon blocks (only 8-9)', mon11.length, 1);
+  SelfTest.assert('week11 mon period range', mon11[0].periodStart+'-'+mon11[0].periodEnd, '8-9');
+
+  var w10 = Schedule.courseBlocksForWeek(courses, 10);
+  SelfTest.assert('week10 no 可靠性', w10.some(function(b){return b.courseId==='c1';}), false);
+
+  var w9 = Schedule.courseBlocksForWeek(courses, 9);
+  SelfTest.assert('week9 has 可靠性', w9.some(function(b){return b.courseId==='c1';}), true);
+
+  var noTime = Schedule.noTimeCourses(courses);
+  SelfTest.assert('noTimeCourses count', noTime.length, 1);
+  SelfTest.assert('noTimeCourses is AI安全', noTime[0].id, 'c2');
+
+  var blocks0911 = Schedule.blocksOnDate(w1, '2026-09-11');
+  SelfTest.assert('09-11 blocks (Fri week1)', blocks0911.length, 1);
+  SelfTest.assert('09-11 is 学术写作', blocks0911[0].courseId, 'c3');
+
+  // Events
+  var testData = { courses: courses, events: [], settings: {} };
+  var ev1 = Events.create(testData, {title:'测试', date:'2026-09-23', category:'homework'});
+  SelfTest.assert('create event id', typeof ev1.id, 'string');
+  SelfTest.assert('events count', testData.events.length, 1);
+  Events.toggle(testData, ev1.id);
+  SelfTest.assert('toggle done', testData.events[0].done, true);
+  Events.remove(testData, ev1.id);
+  SelfTest.assert('remove event', testData.events.length, 0);
+
+  var evs = [
+    {id:'e1',title:'A',date:'2026-09-23',startTime:'14:00',category:'homework',done:false},
+    {id:'e2',title:'B',date:'2026-09-23',category:'personal',done:false},
+    {id:'e3',title:'C',date:'2026-09-20',category:'meeting',done:false}
+  ];
+  var sorted = Events.sort(evs);
+  SelfTest.assert('sort: timed before all-day', sorted[0].id, 'e1');
+  SelfTest.assert('sort: date order', sorted[2].id, 'e3');
+
+  var overdue = Events.isOverdue({date:'2026-09-20',done:false}, '2026-09-23');
+  SelfTest.assert('isOverdue', overdue, true);
+
+  var filtered = Events.filterBy(evs, 'today', '2026-09-23');
+  SelfTest.assert('filter today', filtered.length, 2);
+  var filteredWeek = Events.filterBy(evs, 'week', '2026-09-23');
+  SelfTest.assert('filter week', filteredWeek.length, 2);
+
+  // Store
+  SelfTest.assert('validate good', Store.validate({courses:[{name:'X',slots:[]}],events:[]}).length, 0);
+  SelfTest.assert('validate bad', Store.validate({}).length > 0, true);
+
+  console.log('=== Results: '+SelfTest.pass+' passed, '+SelfTest.fail+' failed ===');
+};
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', App.init);
+</script>
+</body>
+</html>
