@@ -1706,7 +1706,7 @@ Render.timetable = function(data) {
   }
   // Course blocks
   blocks.forEach(function(b) {
-    var top = (b.periodStart - 1) * 46;
+    var top = b.periodStart * 46;
     var height = (b.periodEnd - b.periodStart + 1) * 46 - 6;
     var leftPos = 56 + (b.weekday - 1) * 100 + 2;
     gridHTML += '<div class="tt-block" style="top:'+top+'px;height:'+height+'px;left:'+leftPos+'px;width:96px;background:'+Util.esc(b.course.color)+';" data-course="'+b.courseId+'" data-block-weekstart="'+b.weekStart+'" data-block-weekend="'+b.weekEnd+'" data-block-weekday="'+b.weekday+'" data-block-ps="'+b.periodStart+'" data-block-pe="'+b.periodEnd+'">' +
@@ -1722,7 +1722,7 @@ Render.timetable = function(data) {
       if (nowHM < CONST.PERIODS[p][0]) { nowPeriod = p - 0.5; break; }
     }
     if (nowPeriod > 0) {
-      var lineTop = (nowPeriod - 1) * 46 + ((nowHM - CONST.PERIODS[Math.max(1,Math.floor(nowPeriod))][0]) / 45) * 46;
+      var lineTop = nowPeriod * 46 + ((nowHM - CONST.PERIODS[Math.max(1,Math.floor(nowPeriod))][0]) / 45) * 46;
       gridHTML += '<div class="tt-nowline" style="top:'+Math.max(0,lineTop)+'px;"></div>';
     }
   }
@@ -2057,7 +2057,9 @@ SelfTest.run = function() {
   // Block positioning
   var c1Block = w1.find(function(b){return b.courseId==='c1';});
   var expectedLeft = 56 + (1-1)*100 + 2; // Monday = weekday 1
+  var expectedTop = 1 * 46; // periodStart=1, offset by header row (46px)
   SelfTest.assert('c1 block left position', expectedLeft, 58);
+  SelfTest.assert('c1 block top position', expectedTop, 46);
   SelfTest.assert('c1 block width', 96, 96);
 
   // Events
