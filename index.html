@@ -314,8 +314,8 @@ ul, ol { list-style: none; }
 }
 .tt-grid {
   display: grid;
-  grid-template-columns: 56px repeat(7, minmax(80px, 1fr));
-  min-width: var(--grid-min-w);
+  grid-template-columns: 56px repeat(7, 100px);
+  min-width: 756px;
   position: relative;
 }
 .tt-axis-cell {
@@ -1696,8 +1696,8 @@ Render.timetable = function(data) {
   blocks.forEach(function(b) {
     var top = (b.periodStart - 1) * 46;
     var height = (b.periodEnd - b.periodStart + 1) * 46 - 6;
-    var col = b.weekday + 1;
-    gridHTML += '<div class="tt-block" style="top:'+top+'px;height:'+height+'px;grid-column:'+col+';background:'+Util.esc(b.course.color)+';" data-course="'+b.courseId+'" data-block-weekstart="'+b.weekStart+'" data-block-weekend="'+b.weekEnd+'" data-block-weekday="'+b.weekday+'" data-block-ps="'+b.periodStart+'" data-block-pe="'+b.periodEnd+'">' +
+    var leftPos = 56 + (b.weekday - 1) * 100 + 2;
+    gridHTML += '<div class="tt-block" style="top:'+top+'px;height:'+height+'px;left:'+leftPos+'px;width:96px;background:'+Util.esc(b.course.color)+';" data-course="'+b.courseId+'" data-block-weekstart="'+b.weekStart+'" data-block-weekend="'+b.weekEnd+'" data-block-weekday="'+b.weekday+'" data-block-ps="'+b.periodStart+'" data-block-pe="'+b.periodEnd+'">' +
       '<div class="blk-name">'+Util.esc(b.course.name)+'</div>' +
       '<div class="blk-loc">'+Util.esc(b.location)+'</div>' +
     '</div>';
@@ -2052,6 +2052,12 @@ SelfTest.run = function() {
   var blocks0911 = Schedule.blocksOnDate(w1, '2026-09-11');
   SelfTest.assert('09-11 blocks (Fri week1)', blocks0911.length, 1);
   SelfTest.assert('09-11 is 学术写作', blocks0911[0].courseId, 'c3');
+
+  // Block positioning
+  var c1Block = w1.find(function(b){return b.courseId==='c1';});
+  var expectedLeft = 56 + (1-1)*100 + 2; // Monday = weekday 1
+  SelfTest.assert('c1 block left position', expectedLeft, 58);
+  SelfTest.assert('c1 block width', 96, 96);
 
   // Events
   var testData = { courses: courses, events: [], settings: {} };
