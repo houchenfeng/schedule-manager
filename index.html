@@ -1606,6 +1606,18 @@ Backup.open = function(data) {
    ============================================================ */
 var Render = {};
 
+Render.countdownText = function(dateISO, timeHM) {
+  var targetDate = Util.parseISO(dateISO);
+  var timeParts = timeHM.split(':');
+  targetDate.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0);
+  var diff = targetDate - new Date();
+  if (diff <= 0) return '正在进行中';
+  var days = Math.floor(diff/86400000);
+  var hrs = Math.floor((diff%86400000)/3600000);
+  var mins = Math.floor((diff%3600000)/60000);
+  return '还有 '+days+' 天 '+String(hrs).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+};
+
 Render.home = function(data) {
   var nowISO = Util.today();
   var nowHM = Util.nowHM();
@@ -1632,7 +1644,7 @@ Render.home = function(data) {
   var nextHTML = nextUp ?
     '<div class="nc-title">'+Util.esc(nextUp.title)+'</div>' +
     '<div class="nc-time">'+Util.esc(nextUp.date)+' · '+Util.esc(nextUp.time)+(nextUp.location?' · '+Util.esc(nextUp.location):'')+'</div>' +
-    '<div class="nc-countdown" id="countdown">计算中...</div>' +
+    '<div class="nc-countdown" id="countdown">'+Render.countdownText(nextUp.date, nextUp.time)+'</div>' +
     '<div class="nc-link" data-goto="table">去课表 &gt;</div>' :
     '<div class="empty-state" style="padding:16px;">暂无安排</div>';
 
@@ -1866,18 +1878,7 @@ App.startTicker = function() {
         var nowHM = Util.nowHM();
         var next = Schedule.nextUp(App.data.courses, App.data.events, nowISO, nowHM);
         if (next) {
-          var nextDate = Util.parseISO(next.date);
-          var nextTime = next.time.split(':');
-          nextDate.setHours(parseInt(nextTime[0]), parseInt(nextTime[1]), 0);
-          var diff = nextDate - new Date();
-          if (diff > 0) {
-            var days = Math.floor(diff/86400000);
-            var hrs = Math.floor((diff%86400000)/3600000);
-            var mins = Math.floor((diff%3600000)/60000);
-            el.textContent = '还有 '+days+' 天 '+String(hrs).padStart(2,'0')+':'+String(mins).padStart(2,'0');
-          } else {
-            el.textContent = '正在进行中';
-          }
+          el.textContent = Render.countdownText(next.date, next.time);
         }
       }
     }
@@ -2085,6 +2086,12 @@ SelfTest.run = function() {
   SelfTest.assert('filter today', filtered.length, 2);
   var filteredWeek = Events.filterBy(evs, 'week', '2026-09-23');
   SelfTest.assert('filter week', filteredWeek.length, 2);
+
+  // Render countdown
+  var futureText = Render.countdownText('2026-09-25', '08:50');
+  SelfTest.assert('countdown future starts with 还有', futureText.indexOf('还有'), 0);
+  var pastText = Render.countdownText('2020-01-01', '00:00');
+  SelfTest.assert('countdown past shows 正在进行中', pastText, '正在进行中');
 
   // Store
   SelfTest.assert('validate good', Store.validate({courses:[{name:'X',slots:[]}],events:[]}).length, 0);
