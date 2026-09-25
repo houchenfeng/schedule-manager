@@ -204,7 +204,7 @@ pre.code.xs{font-size:12.4px;line-height:1.36;}
 #ctrls button:hover{background:var(--yellow);}
 #ctrls button:active{transform:translate(2px,2px);box-shadow:none;}
 #counter{position:fixed;left:16px;bottom:14px;z-index:52;font-family:var(--disp);font-size:16px;background:var(--ink);color:var(--yellow);padding:6px 12px;border:3px solid var(--yellow);}
-#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:52;font-family:var(--mono);font-size:12.5px;color:#bbb;background:rgba(0,0,0,.55);padding:5px 12px;border-radius:2px;}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:52;font-family:var(--mono);font-size:12.5px;color:#bbb;background:rgba(0,0,0,.55);padding:5px 12px;border-radius:2px;opacity:0;transition:opacity .4s;pointer-events:none;}
 
 /* overview overlay */
 #ovl{position:fixed;inset:0;z-index:60;background:rgba(10,10,10,.94);display:none;overflow:auto;padding:34px 40px;}
@@ -1642,6 +1642,16 @@ git@github.com:项目作者/项目名称.git
 
 <script>
 (function(){
+  var hint=document.getElementById('hint');
+  var hintTimer;
+  function showHint(){
+    hint.style.opacity='1';
+    clearTimeout(hintTimer);
+    hintTimer=setTimeout(function(){hint.style.opacity='0';},2500);
+  }
+  document.addEventListener('mousemove',showHint);
+  showHint();
+
   var stage=document.getElementById('stage');
   var slides=[].slice.call(document.querySelectorAll('.slide'));
   var cur=0, dir=1;
